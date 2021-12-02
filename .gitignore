@@ -1,1 +1,4 @@
 bin/**
+cardiacsim
+cardiacsim.o
+cardiacsim_kernels.o
