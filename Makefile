@@ -261,6 +261,8 @@ endif
 # Target rules
 all: build
 
+reset: clean build
+
 build: cardiacsim
 
 check.deps:
@@ -273,7 +275,7 @@ endif
 cardiacsim.o:cardiacsim.cpp
 	$(EXEC) $(NVCC) $(INCLUDES) $(ALL_CCFLAGS) $(GENCODE_FLAGS) -o $@ -c $<
 
-cardiacsim_kernels.o:cardiacsim_kernels.cu
+cardiacsim_kernels.o: cardiacsim_kernels.cu
 	$(EXEC) $(NVCC) $(INCLUDES) $(ALL_CCFLAGS) $(GENCODE_FLAGS) -o $@ -c $<
 
 cardiacsim: cardiacsim.o cardiacsim_kernels.o

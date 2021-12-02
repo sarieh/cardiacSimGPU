@@ -1,5 +1,4 @@
 #include <stdio.h>
-#include <cardiacsim_kernels.h>
 
 #define BLOCK_SIZE 16
 
@@ -39,7 +38,6 @@ __global__ void v1_ODE(double **E, double **E_prev, double **R,
 	E[row][col] = E[row][col] - dt * (kk * E[row][col] * (E[row][col] - a) * (E[row][col] - 1) + E[row][col] * R[row][col]);
 	R[row][col] = R[row][col] + dt * (epsilon + M1 * R[row][col] / (E[row][col] + M2)) * (-R[row][col] - kk * E[row][col] * (E[row][col] - b - 1));
 }
-
 
 void kernel1(double **E, double **E_prev, double **R, const double alpha, const int n, const int m, const double kk,
 					const double dt, const double a, const double epsilon, const double M1, const double M2, const double b)

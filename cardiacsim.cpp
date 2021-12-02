@@ -20,7 +20,8 @@
 #include <math.h>
 #include <sys/time.h>
 #include <getopt.h>
-#include "cardiacsim_kernels.h"
+
+#include "cardiacsim.h"
 
 using namespace std;
 
