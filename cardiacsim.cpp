@@ -206,8 +206,6 @@ int main(int argc, char **argv)
   // Integer timestep number
   int niter = 0;
 
-kernel1(E, E_prev, R, alpha, n, m, kk, dt, a, epsilon, M1, M2, b);
-
   while (t < T)
   {
 
@@ -216,7 +214,7 @@ kernel1(E, E_prev, R, alpha, n, m, kk, dt, a, epsilon, M1, M2, b);
 
     if (kernel == 1)
     {
-      // kernel1(E, E_prev, R, alpha, n, m, kk, dt, a, epsilon, M1, M2, b);
+      kernel1(E, E_prev, R, alpha, n, m, kk, dt, a, epsilon, M1, M2, b);
     }
     else if (kernel == 2)
     {
