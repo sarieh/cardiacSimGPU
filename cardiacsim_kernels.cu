@@ -3,6 +3,8 @@
 
 #define BLOCK_SIZE 16
 
+double *d_E, *d_R, *d_E_prev;
+
 int mat_equal(double **m1, double **m2, int width, int height);
 
 __global__ void v1_PDE(double *E, double *E_prev, double *R,
@@ -21,18 +23,7 @@ __global__ void v1_PDE(double *E, double *E_prev, double *R,
 	if (row <= m && col <= n)
 		E[index] = E_prev[index] + alpha * (E_prev[index + 1] + E_prev[index - 1] - 4 * E_prev[index] + E_prev[index + width] + E_prev[index - width]);
 }
-/*
-  - - - - -
-- * * * * * -
-- * * * * * -
-- * * * * * -
-- * * * * * -
-  - - - - - 
-*/
 
-/*
-  - - - - - - * * * * * - - * * * * * - - * * * * * - - * * * * * - - - - - - 
-*/
 __global__ void v1_ODE(double *E, double *E_prev, double *R,
 					   const double alpha, const int n, const int m, const double kk,
 					   const double dt, const double a, const double epsilon,
@@ -51,7 +42,7 @@ __global__ void v1_ODE(double *E, double *E_prev, double *R,
 }
 
 void kernel1(double *E, double *E_prev, double *R, const double alpha, const int n, const int m, const double kk,
-			 const double dt, const double a, const double epsilon, const double M1, const double M2, const double b)
+			 const double dt, const double a, const double epsilon, const double M1, const double M2, const double b, int shouldMalloc, int shouldFree)
 {
 
 	/// TODO: put ghost stuff in method
@@ -70,12 +61,14 @@ void kernel1(double *E, double *E_prev, double *R, const double alpha, const int
 
 	int nx = n + 2, ny = m + 2;
 
-	double *d_E, *d_R, *d_E_prev;
 	int matSize = sizeof(double) * nx * ny;
 
-	cudaMalloc(&d_E, matSize);
-	cudaMalloc(&d_R, matSize);
-	cudaMalloc(&d_E_prev, matSize);
+	if (shouldMalloc)
+	{
+		cudaMalloc(&d_E, matSize);
+		cudaMalloc(&d_R, matSize);
+		cudaMalloc(&d_E_prev, matSize);
+	}
 
 	cudaMemcpy(d_E, &E[0], matSize, cudaMemcpyHostToDevice);
 	cudaMemcpy(d_E_prev, &E_prev[0], matSize, cudaMemcpyHostToDevice);
@@ -93,10 +86,12 @@ void kernel1(double *E, double *E_prev, double *R, const double alpha, const int
 	cudaMemcpy(E, d_E, matSize, cudaMemcpyDeviceToHost);
 	cudaMemcpy(R, d_R, matSize, cudaMemcpyDeviceToHost);
 	cudaMemcpy(E_prev, d_E_prev, matSize, cudaMemcpyDeviceToHost);
-
-	cudaFree(d_E);
-	cudaFree(d_R);
-	cudaFree(d_E_prev);
+	if (shouldFree)
+	{
+		cudaFree(d_E);
+		cudaFree(d_R);
+		cudaFree(d_E_prev);
+	}
 }
 
 double *flatten_matrix(double **mat, int width, int height)
