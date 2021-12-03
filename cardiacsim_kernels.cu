@@ -5,7 +5,8 @@
 
 double *d_E, *d_R, *d_E_prev;
 
-int mat_equal(double **m1, double **m2, int width, int height);
+
+void mirror_halos(double **mat, int m, int n);
 
 __global__ void v1_PDE(double *E, double *E_prev, double *R,
 					   const double alpha, const int n, const int m, const double kk,
@@ -41,23 +42,11 @@ __global__ void v1_ODE(double *E, double *E_prev, double *R,
 	}
 }
 
-void kernel1(double *E, double *E_prev, double *R, const double alpha, const int n, const int m, const double kk,
+void kernel1(double **E, double **E_prev, double **R, const double alpha, const int n, const int m, const double kk,
 			 const double dt, const double a, const double epsilon, const double M1, const double M2, const double b, int shouldMalloc, int shouldFree)
 {
 
-	/// TODO: put ghost stuff in method
-	int width = m + 2;
-	for (int j = 1; j <= m; j++)
-	{
-		E_prev[j * width] = E_prev[j * width + 2];
-		E_prev[j * width + n + 1] = E_prev[j * width + n - 1];
-	}
-
-	for (int i = 1; i <= n; i++)
-	{
-		E_prev[i] = E_prev[2 * width + i];
-		E_prev[(m + 1) * width + i] = E_prev[(m - 1) * width + i];
-	}
+	mirror_halos(E_prev, m, n);
 
 	int nx = n + 2, ny = m + 2;
 
@@ -70,9 +59,10 @@ void kernel1(double *E, double *E_prev, double *R, const double alpha, const int
 		cudaMalloc(&d_E_prev, matSize);
 	}
 
-	cudaMemcpy(d_E, &E[0], matSize, cudaMemcpyHostToDevice);
-	cudaMemcpy(d_E_prev, &E_prev[0], matSize, cudaMemcpyHostToDevice);
-	cudaMemcpy(d_R, &R[0], matSize, cudaMemcpyHostToDevice);
+	int copyOffset = ny;
+	cudaMemcpy(d_E, &E[0] + copyOffset, matSize, cudaMemcpyHostToDevice);
+	cudaMemcpy(d_E_prev, &E_prev[0] + copyOffset, matSize, cudaMemcpyHostToDevice);
+	cudaMemcpy(d_R, &R[0] + copyOffset, matSize, cudaMemcpyHostToDevice);
 
 	const dim3 block(BLOCK_SIZE, BLOCK_SIZE);
 	int dimension = (n + BLOCK_SIZE - 1) / BLOCK_SIZE;
@@ -83,9 +73,9 @@ void kernel1(double *E, double *E_prev, double *R, const double alpha, const int
 	v1_ODE<<<grid, block>>>(d_E, d_E_prev, d_R, alpha, n, m, kk, dt, a, epsilon, M1, M2, b);
 	cudaDeviceSynchronize();
 
-	cudaMemcpy(E, d_E, matSize, cudaMemcpyDeviceToHost);
-	cudaMemcpy(R, d_R, matSize, cudaMemcpyDeviceToHost);
-	cudaMemcpy(E_prev, d_E_prev, matSize, cudaMemcpyDeviceToHost);
+	cudaMemcpy(E + copyOffset, d_E, matSize, cudaMemcpyDeviceToHost);
+	cudaMemcpy(R + copyOffset, d_R, matSize, cudaMemcpyDeviceToHost);
+	cudaMemcpy(E_prev + copyOffset, d_E_prev, matSize, cudaMemcpyDeviceToHost);
 	if (shouldFree)
 	{
 		cudaFree(d_E);
@@ -94,43 +84,19 @@ void kernel1(double *E, double *E_prev, double *R, const double alpha, const int
 	}
 }
 
-double *flatten_matrix(double **mat, int width, int height)
-{
-	double *flattened = (double *)malloc(width * height * sizeof(double));
-	assert(flattened);
 
-	for (int i = 0; i < width * height; i++)
+void mirror_halos(double **mat, int m, int n) {
+		int i, j;
+
+	for (j = 1; j <= m; j++)
 	{
-		int row = i / width;
-		int col = i % width;
-		flattened[i] = mat[row][col];
+		mat[j][0] = mat[j][2];
+		mat[j][n + 1] = mat[j][n - 1];
 	}
 
-	return flattened;
-}
-
-void unflatten_matrix(double **dest, double *flat, int width, int height)
-{
-
-	for (int i = 0; i < height; i++)
+	for (i = 1; i <= n; i++)
 	{
-		dest[i] = (double *)malloc(width * sizeof(double));
-		memcpy(dest[i], flat + i * width, width * sizeof(double));
+		mat[0][i] = mat[2][i];
+		mat[m + 1][i] = mat[m - 1][i];
 	}
-}
-
-int mat_equal(double **m1, double **m2, int width, int height)
-{
-	for (int i = 0; i < height; i++)
-	{
-		for (int j = 0; j < width; j++)
-		{
-			if (m2[i][j] != m1[i][j])
-			{
-				printf("i: %d, j: %d m1=%f, m2=%f\n", i, j, m1[i][j], m2[i][j]);
-				return 0;
-			}
-		}
-	}
-	return 1;
 }

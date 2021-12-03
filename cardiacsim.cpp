@@ -206,12 +206,6 @@ int main(int argc, char **argv)
   // Integer timestep number
   int niter = 0;
 
-  int nx = n + 2, ny = m + 2;
-
-  double *h_E = flatten_matrix(E, nx, ny);
-  double *h_E_prev = flatten_matrix(E_prev, nx, ny);
-  double *h_R = flatten_matrix(R, nx, ny);
-
   int shouldMalloc = 1;
   int shouldFree = 0;
 
@@ -229,7 +223,7 @@ int main(int argc, char **argv)
 
     if (kernel == 1)
     {
-      kernel1(h_E, h_E_prev, h_R, alpha, n, m, kk, dt, a, epsilon, M1, M2, b, shouldMalloc, shouldFree);
+      kernel1(E, E_prev, R, alpha, n, m, kk, dt, a, epsilon, M1, M2, b, shouldMalloc, shouldFree);
     }
     else if (kernel == 2)
     {
@@ -243,18 +237,9 @@ int main(int argc, char **argv)
     }
 
     //swap current E with previous E
-    if (kernel == 0)
-    {
-      double **tmp = E;
-      E = E_prev;
-      E_prev = tmp;
-    }
-    else
-    {
-      double *tmp = h_E;
-      h_E = h_E_prev;
-      h_E_prev = tmp;
-    }
+    double **tmp = E;
+    E = E_prev;
+    E_prev = tmp;
 
     if (plot_freq)
     {
@@ -265,13 +250,6 @@ int main(int argc, char **argv)
       }
     }
   } //end of while loop
-
-  if (kernel != 0)
-  {
-    unflatten_matrix(E, h_E, nx, ny);
-    unflatten_matrix(R, h_R, nx, ny);
-    unflatten_matrix(E_prev, h_E_prev, nx, ny);
-  }
 
   double time_elapsed = getTime() - t0;
 
