@@ -227,6 +227,7 @@ int main(int argc, char **argv)
     }
     else if (kernel == 2)
     {
+      kernel2(E, E_prev, R, alpha, n, m, kk, dt, a, epsilon, M1, M2, b, shouldMalloc, shouldFree);
     }
     else if (kernel == 3)
     {
