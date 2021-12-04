@@ -101,20 +101,19 @@ void kernel1(double **E, double **E_prev, double **R, const double alpha, const 
 	mirror_halos(E_prev, m, n);
 
 	int nx = n + 2, ny = m + 2;
-
 	int matSize = sizeof(double) * nx * ny;
-
+	int copyOffset = ny;
+	
 	if (shouldMalloc)
 	{
 		cudaMalloc(&d_E, matSize);
 		cudaMalloc(&d_R, matSize);
 		cudaMalloc(&d_E_prev, matSize);
+		cudaMemcpy(d_R, &R[0] + copyOffset, matSize, cudaMemcpyHostToDevice);
 	}
 
-	int copyOffset = ny;
 	cudaMemcpy(d_E, &E[0] + copyOffset, matSize, cudaMemcpyHostToDevice);
 	cudaMemcpy(d_E_prev, &E_prev[0] + copyOffset, matSize, cudaMemcpyHostToDevice);
-	cudaMemcpy(d_R, &R[0] + copyOffset, matSize, cudaMemcpyHostToDevice);
 
 	const dim3 block(BLOCK_SIZE, BLOCK_SIZE);
 	int dimension = (n + BLOCK_SIZE - 1) / BLOCK_SIZE;
@@ -126,10 +125,10 @@ void kernel1(double **E, double **E_prev, double **R, const double alpha, const 
 	cudaDeviceSynchronize();
 
 	cudaMemcpy(E + copyOffset, d_E, matSize, cudaMemcpyDeviceToHost);
-	cudaMemcpy(R + copyOffset, d_R, matSize, cudaMemcpyDeviceToHost);
 	cudaMemcpy(E_prev + copyOffset, d_E_prev, matSize, cudaMemcpyDeviceToHost);
 	if (shouldFree)
 	{
+		cudaMemcpy(R + copyOffset, d_R, matSize, cudaMemcpyDeviceToHost);
 		cudaFree(d_E);
 		cudaFree(d_R);
 		cudaFree(d_E_prev);
@@ -143,20 +142,19 @@ void kernel2(double **E, double **E_prev, double **R, const double alpha, const 
 	mirror_halos(E_prev, m, n);
 
 	int nx = n + 2, ny = m + 2;
-
 	int matSize = sizeof(double) * nx * ny;
+	int copyOffset = ny;
 
 	if (shouldMalloc)
 	{
 		cudaMalloc(&d_E, matSize);
 		cudaMalloc(&d_R, matSize);
 		cudaMalloc(&d_E_prev, matSize);
+		cudaMemcpy(d_R, &R[0] + copyOffset, matSize, cudaMemcpyHostToDevice);
 	}
 
-	int copyOffset = ny;
 	cudaMemcpy(d_E, &E[0] + copyOffset, matSize, cudaMemcpyHostToDevice);
 	cudaMemcpy(d_E_prev, &E_prev[0] + copyOffset, matSize, cudaMemcpyHostToDevice);
-	cudaMemcpy(d_R, &R[0] + copyOffset, matSize, cudaMemcpyHostToDevice);
 
 	const dim3 block(BLOCK_SIZE, BLOCK_SIZE);
 	int dimension = (n + BLOCK_SIZE - 1) / BLOCK_SIZE;
@@ -166,10 +164,10 @@ void kernel2(double **E, double **E_prev, double **R, const double alpha, const 
 	cudaDeviceSynchronize();
 
 	cudaMemcpy(E + copyOffset, d_E, matSize, cudaMemcpyDeviceToHost);
-	cudaMemcpy(R + copyOffset, d_R, matSize, cudaMemcpyDeviceToHost);
 	cudaMemcpy(E_prev + copyOffset, d_E_prev, matSize, cudaMemcpyDeviceToHost);
 	if (shouldFree)
 	{
+		cudaMemcpy(R + copyOffset, d_R, matSize, cudaMemcpyDeviceToHost);
 		cudaFree(d_E);
 		cudaFree(d_R);
 		cudaFree(d_E_prev);
@@ -183,20 +181,19 @@ void kernel3(double **E, double **E_prev, double **R, const double alpha, const 
 	mirror_halos(E_prev, m, n);
 
 	int nx = n + 2, ny = m + 2;
-
 	int matSize = sizeof(double) * nx * ny;
+	int copyOffset = ny;
 
 	if (shouldMalloc)
 	{
 		cudaMalloc(&d_E, matSize);
 		cudaMalloc(&d_R, matSize);
 		cudaMalloc(&d_E_prev, matSize);
+		cudaMemcpy(d_R, &R[0] + copyOffset, matSize, cudaMemcpyHostToDevice);
 	}
 
-	int copyOffset = ny;
 	cudaMemcpy(d_E, &E[0] + copyOffset, matSize, cudaMemcpyHostToDevice);
 	cudaMemcpy(d_E_prev, &E_prev[0] + copyOffset, matSize, cudaMemcpyHostToDevice);
-	cudaMemcpy(d_R, &R[0] + copyOffset, matSize, cudaMemcpyHostToDevice);
 
 	const dim3 block(BLOCK_SIZE, BLOCK_SIZE);
 	int dimension = (n + BLOCK_SIZE - 1) / BLOCK_SIZE;
@@ -206,10 +203,10 @@ void kernel3(double **E, double **E_prev, double **R, const double alpha, const 
 	cudaDeviceSynchronize();
 
 	cudaMemcpy(E + copyOffset, d_E, matSize, cudaMemcpyDeviceToHost);
-	cudaMemcpy(R + copyOffset, d_R, matSize, cudaMemcpyDeviceToHost);
 	cudaMemcpy(E_prev + copyOffset, d_E_prev, matSize, cudaMemcpyDeviceToHost);
 	if (shouldFree)
 	{
+		cudaMemcpy(R + copyOffset, d_R, matSize, cudaMemcpyDeviceToHost);
 		cudaFree(d_E);
 		cudaFree(d_R);
 		cudaFree(d_E_prev);
