@@ -65,6 +65,35 @@ __global__ void v2_kernel(double *E, double *E_prev, double *R,
 	}
 }
 
+__global__ void v3_kernel(double *E, double *E_prev, double *R,
+						  const double alpha, const int n, const int m, const double kk,
+						  const double dt, const double a, const double epsilon,
+						  const double M1, const double M2, const double b)
+{
+
+	int col = blockIdx.x * blockDim.x + threadIdx.x + 1;
+	int row = blockIdx.y * blockDim.y + threadIdx.y + 1;
+
+	int width = m + 2;
+
+	int index = row * width + col;
+
+	if (row <= m && col <= n)
+	{
+		E[index] = E_prev[index] + alpha * (E_prev[index + 1] + E_prev[index - 1] - 4 * E_prev[index] + E_prev[index + width] + E_prev[index - width]);
+
+		__syncthreads();
+
+		double e_current = E[index];
+		double r_current = R[index];
+
+		E[index] = e_current - dt * (kk * e_current * (e_current - a) * (e_current - 1) + e_current * r_current);
+		e_current = E[index];
+
+		R[index] = r_current + dt * (epsilon + M1 * r_current / (e_current + M2)) * (-r_current - kk * e_current * (e_current - b - 1));
+	}
+}
+
 void kernel1(double **E, double **E_prev, double **R, const double alpha, const int n, const int m, const double kk,
 			 const double dt, const double a, const double epsilon, const double M1, const double M2, const double b, int shouldMalloc, int shouldFree)
 {
@@ -134,6 +163,46 @@ void kernel2(double **E, double **E_prev, double **R, const double alpha, const 
 	const dim3 grid(dimension, dimension);
 
 	v2_kernel<<<grid, block>>>(d_E, d_E_prev, d_R, alpha, n, m, kk, dt, a, epsilon, M1, M2, b);
+	cudaDeviceSynchronize();
+
+	cudaMemcpy(E + copyOffset, d_E, matSize, cudaMemcpyDeviceToHost);
+	cudaMemcpy(R + copyOffset, d_R, matSize, cudaMemcpyDeviceToHost);
+	cudaMemcpy(E_prev + copyOffset, d_E_prev, matSize, cudaMemcpyDeviceToHost);
+	if (shouldFree)
+	{
+		cudaFree(d_E);
+		cudaFree(d_R);
+		cudaFree(d_E_prev);
+	}
+}
+
+void kernel3(double **E, double **E_prev, double **R, const double alpha, const int n, const int m, const double kk,
+			 const double dt, const double a, const double epsilon, const double M1, const double M2, const double b, int shouldMalloc, int shouldFree)
+{
+
+	mirror_halos(E_prev, m, n);
+
+	int nx = n + 2, ny = m + 2;
+
+	int matSize = sizeof(double) * nx * ny;
+
+	if (shouldMalloc)
+	{
+		cudaMalloc(&d_E, matSize);
+		cudaMalloc(&d_R, matSize);
+		cudaMalloc(&d_E_prev, matSize);
+	}
+
+	int copyOffset = ny;
+	cudaMemcpy(d_E, &E[0] + copyOffset, matSize, cudaMemcpyHostToDevice);
+	cudaMemcpy(d_E_prev, &E_prev[0] + copyOffset, matSize, cudaMemcpyHostToDevice);
+	cudaMemcpy(d_R, &R[0] + copyOffset, matSize, cudaMemcpyHostToDevice);
+
+	const dim3 block(BLOCK_SIZE, BLOCK_SIZE);
+	int dimension = (n + BLOCK_SIZE - 1) / BLOCK_SIZE;
+	const dim3 grid(dimension, dimension);
+
+	v3_kernel<<<grid, block>>>(d_E, d_E_prev, d_R, alpha, n, m, kk, dt, a, epsilon, M1, M2, b);
 	cudaDeviceSynchronize();
 
 	cudaMemcpy(E + copyOffset, d_E, matSize, cudaMemcpyDeviceToHost);
