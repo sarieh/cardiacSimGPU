@@ -221,22 +221,10 @@ int main(int argc, char **argv)
 
     niter++;
 
-    if (kernel == 1)
-    {
-      kernel1(E, E_prev, R, alpha, n, m, kk, dt, a, epsilon, M1, M2, b, shouldMalloc, shouldFree);
-    }
-    else if (kernel == 2)
-    {
-      kernel2(E, E_prev, R, alpha, n, m, kk, dt, a, epsilon, M1, M2, b, shouldMalloc, shouldFree);
-    }
-    else if (kernel == 3)
-    {
-      kernel3(E, E_prev, R, alpha, n, m, kk, dt, a, epsilon, M1, M2, b, shouldMalloc, shouldFree);
-    }
-    else
-    {
+    if (kernel == 0)
       simulate(E, E_prev, R, alpha, n, m, kk, dt, a, epsilon, M1, M2, b);
-    }
+    else
+      deviceKernel(E, E_prev, R, alpha, n, m, kk, dt, a, epsilon, M1, M2, b, shouldMalloc, shouldFree, kernel);
 
     //swap current E with previous E
     double **tmp = E;
