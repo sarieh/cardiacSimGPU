@@ -224,7 +224,7 @@ int main(int argc, char **argv)
     if (kernel == 0)
       simulate(E, E_prev, R, alpha, n, m, kk, dt, a, epsilon, M1, M2, b);
     else
-      deviceKernel(E, E_prev, R, alpha, n, m, kk, dt, a, epsilon, M1, M2, b, shouldMalloc, shouldFree, kernel);
+      deviceKernel(E, E_prev, R, alpha, n, m, kk, dt, a, epsilon, M1, M2, b, shouldMalloc, shouldFree, kernel, bx, by);
 
     //swap current E with previous E
     double **tmp = E;
@@ -299,11 +299,11 @@ void cmdLine(int argc, char *argv[], double &T, int &n, int &bx, int &by, int &p
         // X block geometry
       case 'x':
         bx = atoi(optarg);
-
+        break;
         // Y block geometry
       case 'y':
         by = atoi(optarg);
-
+        break;
         // Length of simulation, in simulated time units
       case 't':
         T = atof(optarg);

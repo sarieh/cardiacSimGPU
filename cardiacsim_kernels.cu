@@ -98,12 +98,11 @@ __global__ void v3_kernel(double *E, double *E_prev, double *R,
 __global__ void v4_kernel(double *E, double *E_prev, double *R,
 						  const double alpha, const int n, const int m, const double kk,
 						  const double dt, const double a, const double epsilon,
-						  const double M1, const double M2, const double b)
+						  const double M1, const double M2, const double b, int bx)
 {
-	const int block_width = BLOCK_SIZE + 2;
-	const int sharedBlockSize = block_width * block_width;
-	__shared__ double shared_E_prev[sharedBlockSize];
-	__shared__ double shared_R[sharedBlockSize];
+	extern __shared__ double shared_E_prev[];
+
+	const int block_width = blockDim.x + 2;
 
 	int col = blockIdx.x * blockDim.x + threadIdx.x + 1;
 	int row = blockIdx.y * blockDim.y + threadIdx.y + 1;
@@ -118,18 +117,16 @@ __global__ void v4_kernel(double *E, double *E_prev, double *R,
 
 	// Read input elements into shared memory
 	shared_E_prev[lindex] = E_prev[gindex];
-	shared_R[lindex] = R[gindex];
-
 	//Load ghost cells
 	if (threadIdx.x < 1)
 	{
 		shared_E_prev[lindex - 1] = E_prev[gindex - 1];
-		shared_E_prev[lindex + BLOCK_SIZE] = E_prev[gindex + BLOCK_SIZE];
+		shared_E_prev[lindex + bx] = E_prev[gindex + bx];
 	}
 	if (threadIdx.y < 1)
 	{
 		shared_E_prev[lindex - block_width] = E_prev[gindex - gwidth];
-		shared_E_prev[lindex + block_width * BLOCK_SIZE] = E_prev[gindex + gwidth * BLOCK_SIZE];
+		shared_E_prev[lindex + block_width * bx] = E_prev[gindex + gwidth * bx];
 	}
 
 	/*
@@ -147,7 +144,7 @@ __global__ void v4_kernel(double *E, double *E_prev, double *R,
 	{
 		//PDE
 		double e_current = shared_E_prev[lindex] + alpha * (shared_E_prev[lindex + 1] + shared_E_prev[lindex - 1] - 4 * shared_E_prev[lindex] + shared_E_prev[lindex + block_width] + shared_E_prev[lindex - block_width]);
-		double r_current = shared_R[lindex];
+		double r_current = R[gindex];
 		__syncthreads();
 
 		//ODE
@@ -160,7 +157,7 @@ __global__ void v4_kernel(double *E, double *E_prev, double *R,
 }
 
 void deviceKernel(double **E, double **E_prev, double **R, const double alpha, const int n, const int m, const double kk,
-				  const double dt, const double a, const double epsilon, const double M1, const double M2, const double b, int shouldMalloc, int shouldFree, int v)
+				  const double dt, const double a, const double epsilon, const double M1, const double M2, const double b, int shouldMalloc, int shouldFree, int v, int bx, int by)
 {
 
 	mirror_halos(E_prev, m, n);
@@ -180,13 +177,17 @@ void deviceKernel(double **E, double **E_prev, double **R, const double alpha, c
 	cudaMemcpy(d_E, &E[0] + copyOffset, matSize, cudaMemcpyHostToDevice);
 	cudaMemcpy(d_E_prev, &E_prev[0] + copyOffset, matSize, cudaMemcpyHostToDevice);
 
-	const dim3 block(BLOCK_SIZE, BLOCK_SIZE);
-	int dimension = (n + BLOCK_SIZE - 1) / BLOCK_SIZE;
+	const dim3 block(bx, bx);
+	int dimension = (n + bx - 1) / bx;
 	const dim3 grid(dimension, dimension);
+
+	const int block_width = bx + 2;
+	const int sharedBlockSize = block_width * block_width * sizeof(double);
 
 	if (v == 1)
 	{
 		v1_PDE<<<grid, block>>>(d_E, d_E_prev, d_R, alpha, n, m, kk, dt, a, epsilon, M1, M2, b);
+		cudaDeviceSynchronize();
 		v1_ODE<<<grid, block>>>(d_E, d_E_prev, d_R, alpha, n, m, kk, dt, a, epsilon, M1, M2, b);
 	}
 	else if (v == 2)
@@ -199,7 +200,7 @@ void deviceKernel(double **E, double **E_prev, double **R, const double alpha, c
 	}
 	else
 	{
-		v4_kernel<<<grid, block>>>(d_E, d_E_prev, d_R, alpha, n, m, kk, dt, a, epsilon, M1, M2, b);
+		v4_kernel<<<grid, block, sharedBlockSize>>>(d_E, d_E_prev, d_R, alpha, n, m, kk, dt, a, epsilon, M1, M2, b, bx);
 	}
 	cudaDeviceSynchronize();
 
