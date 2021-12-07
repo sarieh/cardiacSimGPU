@@ -98,7 +98,7 @@ __global__ void v3_kernel(double *E, double *E_prev, double *R,
 __global__ void v4_kernel(double *E, double *E_prev, double *R,
 						  const double alpha, const int n, const int m, const double kk,
 						  const double dt, const double a, const double epsilon,
-						  const double M1, const double M2, const double b, int bx)
+						  const double M1, const double M2, const double b, int bx, int by)
 {
 	extern __shared__ double shared_E_prev[];
 
@@ -126,7 +126,7 @@ __global__ void v4_kernel(double *E, double *E_prev, double *R,
 	if (threadIdx.y < 1)
 	{
 		shared_E_prev[lindex - block_width] = E_prev[gindex - gwidth];
-		shared_E_prev[lindex + block_width * bx] = E_prev[gindex + gwidth * bx];
+		shared_E_prev[lindex + block_width * by] = E_prev[gindex + gwidth * by];
 	}
 
 	/*
@@ -177,12 +177,14 @@ void deviceKernel(double **E, double **E_prev, double **R, const double alpha, c
 	cudaMemcpy(d_E, &E[0] + copyOffset, matSize, cudaMemcpyHostToDevice);
 	cudaMemcpy(d_E_prev, &E_prev[0] + copyOffset, matSize, cudaMemcpyHostToDevice);
 
-	const dim3 block(bx, bx);
-	int dimension = (n + bx - 1) / bx;
-	const dim3 grid(dimension, dimension);
+	const dim3 block(bx, by);
+	int dimension_x = (n + bx - 1) / bx;
+	int dimension_y = (n + by - 1) / by;
+	const dim3 grid(dimension_x, dimension_y);
 
 	const int block_width = bx + 2;
-	const int sharedBlockSize = block_width * block_width * sizeof(double);
+	const int block_height = by + 2;
+	const int sharedBlockSize = block_width * block_height * sizeof(double);
 
 	if (v == 1)
 	{
@@ -200,7 +202,7 @@ void deviceKernel(double **E, double **E_prev, double **R, const double alpha, c
 	}
 	else
 	{
-		v4_kernel<<<grid, block, sharedBlockSize>>>(d_E, d_E_prev, d_R, alpha, n, m, kk, dt, a, epsilon, M1, M2, b, bx);
+		v4_kernel<<<grid, block, sharedBlockSize>>>(d_E, d_E_prev, d_R, alpha, n, m, kk, dt, a, epsilon, M1, M2, b, bx, by);
 	}
 	cudaDeviceSynchronize();
 
