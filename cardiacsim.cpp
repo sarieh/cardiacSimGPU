@@ -210,6 +210,8 @@ int main(int argc, char **argv)
   int shouldMalloc = 1;
   int shouldFree = 0;
 
+  int swap = 0;
+
   while (t < T)
   {
     if (t > 0.0)
@@ -225,13 +227,17 @@ int main(int argc, char **argv)
     if (kernel == 0)
       simulate(E, E_prev, R, alpha, n, m, kk, dt, a, epsilon, M1, M2, b);
     else
-      deviceKernel(E, E_prev, R, &d_E, &d_R, &d_E_prev, alpha, n, m, kk, dt, a, epsilon, M1, M2, b, shouldMalloc, shouldFree, kernel);
+      deviceKernel(E, E_prev, R, &d_E, &d_R, &d_E_prev, alpha, n, m, kk, dt, a, epsilon, M1, M2, b, shouldMalloc, shouldFree, kernel, swap);
 
     //swap current E with previous E
-    double **tmp = E;
-    E = E_prev;
-    E_prev = tmp;
+    if (kernel == 0)
+    {
+      double **tmp = E;
+      E = E_prev;
+      E_prev = tmp;
+    }
 
+    swap++;
     if (plot_freq)
     {
       int k = (int)(t / plot_freq);
@@ -300,10 +306,12 @@ void cmdLine(int argc, char *argv[], double &T, int &n, int &bx, int &by, int &p
         // X block geometry
       case 'x':
         bx = atoi(optarg);
+        break;
 
         // Y block geometry
       case 'y':
         by = atoi(optarg);
+        break;
 
         // Length of simulation, in simulated time units
       case 't':
