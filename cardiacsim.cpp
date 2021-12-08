@@ -146,6 +146,7 @@ int main(int argc, char **argv)
    *      and is used in time integration
    */
   double **E, **R, **E_prev;
+  double *d_E, *d_R, *d_E_prev;
 
   // Various constants - these definitions shouldn't change
   const double a = 0.1, b = 0.1, kk = 8.0, M1 = 0.07, M2 = 0.3, epsilon = 0.01, d = 5e-5;
@@ -224,7 +225,7 @@ int main(int argc, char **argv)
     if (kernel == 0)
       simulate(E, E_prev, R, alpha, n, m, kk, dt, a, epsilon, M1, M2, b);
     else
-      deviceKernel(E, E_prev, R, alpha, n, m, kk, dt, a, epsilon, M1, M2, b, shouldMalloc, shouldFree, kernel);
+      deviceKernel(E, E_prev, R, &d_E, &d_R, &d_E_prev, alpha, n, m, kk, dt, a, epsilon, M1, M2, b, shouldMalloc, shouldFree, kernel);
 
     //swap current E with previous E
     double **tmp = E;
