@@ -227,7 +227,8 @@ int main(int argc, char **argv)
     if (kernel == 0)
       simulate(E, E_prev, R, alpha, n, m, kk, dt, a, epsilon, M1, M2, b);
     else
-      deviceKernel(E, E_prev, R, &d_E, &d_R, &d_E_prev, alpha, n, m, kk, dt, a, epsilon, M1, M2, b, shouldMalloc, shouldFree, kernel, swap);
+      deviceKernel(E, E_prev, R, alpha, n, m, kk, dt, a, epsilon, M1, M2, b, shouldMalloc, shouldFree, kernel, swap, bx, by);
+
 
     //swap current E with previous E
     if (kernel == 0)

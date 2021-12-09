@@ -3,8 +3,6 @@
 
 #define BLOCK_SIZE 16
 
-void mirror_halos(double **mat, int m, int n);
-
 __global__ void v1_PDE(double *E, double *E_prev, double *R,
 					   const double alpha, const int n, const int m, const double kk,
 					   const double dt, const double a, const double epsilon,
@@ -96,12 +94,11 @@ __global__ void v3_kernel(double *E, double *E_prev, double *R,
 __global__ void v4_kernel(double *E, double *E_prev, double *R,
 						  const double alpha, const int n, const int m, const double kk,
 						  const double dt, const double a, const double epsilon,
-						  const double M1, const double M2, const double b)
+						  const double M1, const double M2, const double b, int bx, int by)
 {
-	const int block_width = BLOCK_SIZE + 2;
-	const int sharedBlockSize = block_width * block_width;
-	__shared__ double shared_E_prev[sharedBlockSize];
-	__shared__ double shared_R[sharedBlockSize];
+	extern __shared__ double shared_E_prev[];
+
+	const int block_width = blockDim.x + 2;
 
 	int col = blockIdx.x * blockDim.x + threadIdx.x + 1;
 	int row = blockIdx.y * blockDim.y + threadIdx.y + 1;
@@ -116,18 +113,16 @@ __global__ void v4_kernel(double *E, double *E_prev, double *R,
 
 	// Read input elements into shared memory
 	shared_E_prev[lindex] = E_prev[gindex];
-	shared_R[lindex] = R[gindex];
-
 	//Load ghost cells
 	if (threadIdx.x < 1)
 	{
 		shared_E_prev[lindex - 1] = E_prev[gindex - 1];
-		shared_E_prev[lindex + BLOCK_SIZE] = E_prev[gindex + BLOCK_SIZE];
+		shared_E_prev[lindex + bx] = E_prev[gindex + bx];
 	}
 	if (threadIdx.y < 1)
 	{
 		shared_E_prev[lindex - block_width] = E_prev[gindex - gwidth];
-		shared_E_prev[lindex + block_width * BLOCK_SIZE] = E_prev[gindex + gwidth * BLOCK_SIZE];
+		shared_E_prev[lindex + block_width * by] = E_prev[gindex + gwidth * by];
 	}
 
 	__syncthreads(); // Make sure all threads loaded into the shared memory
@@ -136,7 +131,7 @@ __global__ void v4_kernel(double *E, double *E_prev, double *R,
 	{
 		//PDE
 		double e_current = shared_E_prev[lindex] + alpha * (shared_E_prev[lindex + 1] + shared_E_prev[lindex - 1] - 4 * shared_E_prev[lindex] + shared_E_prev[lindex + block_width] + shared_E_prev[lindex - block_width]);
-		double r_current = shared_R[lindex];
+		double r_current = R[gindex];
 		__syncthreads();
 
 		//ODE
@@ -161,7 +156,7 @@ __global__ void halos_kernel(double *E_prev, const int m){
 }
 
 void deviceKernel(double **E, double **E_prev, double **R, double **d_E, double **d_E_prev, double **d_R, const double alpha, const int n, const int m, const double kk,
-	const double dt, const double a, const double epsilon, const double M1, const double M2, const double b, int shouldMalloc, int shouldFree, int v, int swap)
+	const double dt, const double a, const double epsilon, const double M1, const double M2, const double b, int shouldMalloc, int shouldFree, int v, int swap, int bx, int by)
 {
 
 	int nx = n + 2, ny = m + 2;
@@ -178,10 +173,15 @@ void deviceKernel(double **E, double **E_prev, double **R, double **d_E, double 
 		cudaMemcpy(*d_E_prev, &E_prev[copyOffset], matSize, cudaMemcpyHostToDevice);
 	}
 
-	const dim3 block(BLOCK_SIZE, BLOCK_SIZE);
-	int dimension = (n + BLOCK_SIZE - 1) / BLOCK_SIZE;
-	const dim3 grid(dimension, dimension);
+	const dim3 block(bx, by);
+	int dimension_x = (n + bx - 1) / bx;
+	int dimension_y = (n + by - 1) / by;
+	const dim3 grid(dimension_x, dimension_y);
 
+	const int block_width = bx + 2;
+	const int block_height = by + 2;
+	const int sharedBlockSize = block_width * block_height * sizeof(double);
+    
 	if(swap % 2)
 		halos_kernel<<<1, m>>>(*d_E, m);
 	else
@@ -219,9 +219,10 @@ void deviceKernel(double **E, double **E_prev, double **R, double **d_E, double 
 	else
 	{
 		if(swap % 2)
-			v4_kernel<<<grid, block>>>(*d_E_prev, *d_E, *d_R, alpha, n, m, kk, dt, a, epsilon, M1, M2, b);
+			v4_kernel<<<grid, block, sharedBlockSize>>>(d_E, d_E_prev, d_R, alpha, n, m, kk, dt, a, epsilon, M1, M2, b, bx, by);
 		else
-			v4_kernel<<<grid, block>>>(*d_E, *d_E_prev, *d_R, alpha, n, m, kk, dt, a, epsilon, M1, M2, b);
+			v4_kernel<<<grid, block, sharedBlockSize>>>(d_E, d_E_prev, d_R, alpha, n, m, kk, dt, a, epsilon, M1, M2, b, bx, by);
+		
 	}
 
 	cudaDeviceSynchronize();
@@ -229,27 +230,9 @@ void deviceKernel(double **E, double **E_prev, double **R, double **d_E, double 
 	{
 		cudaMemcpy(&E[copyOffset] , *d_E, matSize, cudaMemcpyDeviceToHost);
 		cudaMemcpy(&E_prev[copyOffset] , *d_E_prev, matSize, cudaMemcpyDeviceToHost);	
-		
 		cudaMemcpy(&R[copyOffset] , *d_R, matSize, cudaMemcpyDeviceToHost);
 		cudaFree(*d_E);
 		cudaFree(*d_R);
 		cudaFree(*d_E_prev);
-	}
-}
-
-void mirror_halos(double **mat, int m, int n)
-{
-	int i, j;
-
-	for (j = 1; j <= m; j++)
-	{
-		mat[j][0] = mat[j][2];
-		mat[j][n + 1] = mat[j][n - 1];
-	}
-
-	for (i = 1; i <= n; i++)
-	{
-		mat[0][i] = mat[2][i];
-		mat[m + 1][i] = mat[m - 1][i];
 	}
 }
