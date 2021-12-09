@@ -1,7 +1,8 @@
 #include <stdio.h>
 #include <assert.h>
 
-#define BLOCK_SIZE 16
+void deviceKernelWithSwappedData(double **E, double **E_prev, double **d_E, double **d_E_prev, double **d_R, const double alpha, const int n, const int m, const double kk, 
+	const double dt, const double a, const double epsilon, const double M1, const double M2, const double b, int v, int bx, int by, int plot);
 
 __global__ void v1_PDE(double *E, double *E_prev, double *R,
 					   const double alpha, const int n, const int m, const double kk,
@@ -157,95 +158,83 @@ __global__ void halos_kernel(double *E_prev, const int m){
 
 void deviceKernel(double **E, double **E_prev, double **R, double **d_E, double **d_E_prev, double **d_R, const double alpha, 
 	const int n, const int m, const double kk, const double dt, const double a, const double epsilon, const double M1, const double M2, 
-	const double b, int shouldMalloc, int shouldFree, int v, int swap, int bx, int by, int plot)
+	const double b, int shouldFree, int v, int swap, int bx, int by, int plot)
 {
-
 	int nx = n + 2, ny = m + 2;
 	int matSize = sizeof(double) * nx * ny;
 	int copyOffset = ny;
+    
+	if(swap % 2)
+		deviceKernelWithSwappedData(E, E_prev, d_E_prev, d_E, d_R, alpha, n, m, kk, dt, a, epsilon, M1, M2, b, v, bx, by, plot);
+	else
+		deviceKernelWithSwappedData(E, E_prev, d_E, d_E_prev, d_R, alpha, n, m, kk, dt, a, epsilon, M1, M2, b, v, bx, by, plot);
 
-	if (shouldMalloc)
+	if (shouldFree)
 	{
-		cudaMalloc(&(*d_E), matSize);
-		cudaMalloc(&(*d_R), matSize);
-		cudaMalloc(&(*d_E_prev), matSize);
-		cudaMemcpy(*d_R, &R[copyOffset], matSize, cudaMemcpyHostToDevice);
-		cudaMemcpy(*d_E, &E[copyOffset], matSize, cudaMemcpyHostToDevice);
-		cudaMemcpy(*d_E_prev, &E_prev[copyOffset], matSize, cudaMemcpyHostToDevice);
+		cudaMemcpy(&E[copyOffset], *d_E, matSize, cudaMemcpyDeviceToHost);
+		cudaMemcpy(&E_prev[copyOffset], *d_E_prev, matSize, cudaMemcpyDeviceToHost);	
+		cudaMemcpy(&R[copyOffset], *d_R, matSize, cudaMemcpyDeviceToHost);
+		cudaFree(*d_E);
+		cudaFree(*d_R);
+		cudaFree(*d_E_prev);
 	}
+}
+
+void deviceKernelWithSwappedData(double **E, double **E_prev, double **d_E, double **d_E_prev, double **d_R, const double alpha, const int n, const int m, const double kk, 
+	const double dt, const double a, const double epsilon, const double M1, const double M2, const double b, int v, int bx, int by, int plot){
+	
+	int nx = n + 2, ny = m + 2;
+	int matSize = sizeof(double) * nx * ny;
+	int copyOffset = ny;
 
 	const dim3 block(bx, by);
 	int dimension_x = (n + bx - 1) / bx;
 	int dimension_y = (n + by - 1) / by;
 	const dim3 grid(dimension_x, dimension_y);
-
+		
 	const int block_width = bx + 2;
 	const int block_height = by + 2;
 	const int sharedBlockSize = block_width * block_height * sizeof(double);
-    
-	if(swap % 2)
-		halos_kernel<<<1, m>>>(*d_E, m);
-	else
-		halos_kernel<<<1, m>>>(*d_E_prev, m);
-		
+
+	halos_kernel<<<1, m>>>(*d_E_prev, m);
 	cudaDeviceSynchronize();
 
 	if (v == 1)
 	{
-		if(swap % 2)
-			v1_PDE<<<grid, block>>>(*d_E_prev, *d_E, *d_R, alpha, n, m, kk, dt, a, epsilon, M1, M2, b);
-		else
-			v1_PDE<<<grid, block>>>(*d_E, *d_E_prev, *d_R, alpha, n, m, kk, dt, a, epsilon, M1, M2, b);
-
+		v1_PDE<<<grid, block>>>(*d_E, *d_E_prev, *d_R, alpha, n, m, kk, dt, a, epsilon, M1, M2, b);
 		cudaDeviceSynchronize();
-		if(swap % 2)
-			v1_ODE<<<grid, block>>>(*d_E_prev, *d_E, *d_R, alpha, n, m, kk, dt, a, epsilon, M1, M2, b);
-		else
-			v1_ODE<<<grid, block>>>(*d_E, *d_E_prev, *d_R, alpha, n, m, kk, dt, a, epsilon, M1, M2, b);
+		v1_ODE<<<grid, block>>>(*d_E, *d_E_prev, *d_R, alpha, n, m, kk, dt, a, epsilon, M1, M2, b);
 	}
 	else if (v == 2)
 	{
-		if(swap % 2)
-			v2_kernel<<<grid, block>>>(*d_E_prev, *d_E, *d_R, alpha, n, m, kk, dt, a, epsilon, M1, M2, b);
-		else
-			v2_kernel<<<grid, block>>>(*d_E, *d_E_prev, *d_R, alpha, n, m, kk, dt, a, epsilon, M1, M2, b);
+		v2_kernel<<<grid, block>>>(*d_E, *d_E_prev, *d_R, alpha, n, m, kk, dt, a, epsilon, M1, M2, b);
 	}
 	else if (v == 3)
 	{
-		if(swap % 2)
-			v3_kernel<<<grid, block>>>(*d_E_prev, *d_E, *d_R, alpha, n, m, kk, dt, a, epsilon, M1, M2, b);
-		else
-			v3_kernel<<<grid, block>>>(*d_E, *d_E_prev, *d_R, alpha, n, m, kk, dt, a, epsilon, M1, M2, b);
+		v3_kernel<<<grid, block>>>(*d_E, *d_E_prev, *d_R, alpha, n, m, kk, dt, a, epsilon, M1, M2, b);
 	}
 	else
 	{
-		if(swap % 2)
-			v4_kernel<<<grid, block, sharedBlockSize>>>(*d_E_prev, *d_E, *d_R, alpha, n, m, kk, dt, a, epsilon, M1, M2, b, bx, by);
-		else
-			v4_kernel<<<grid, block, sharedBlockSize>>>(*d_E, *d_E_prev, *d_R, alpha, n, m, kk, dt, a, epsilon, M1, M2, b, bx, by);
-		
+		v4_kernel<<<grid, block, sharedBlockSize>>>(*d_E, *d_E_prev, *d_R, alpha, n, m, kk, dt, a, epsilon, M1, M2, b, bx, by);
 	}
-
 	cudaDeviceSynchronize();
 
 	//Move E and E_prev from host to device for plotting
 	if(plot){
-		if(swap % 2){	
-			cudaMemcpy(&E[copyOffset] , *d_E, matSize, cudaMemcpyDeviceToHost);
-			cudaMemcpy(&E_prev[copyOffset] , *d_E_prev, matSize, cudaMemcpyDeviceToHost);	
-		}else{
-			cudaMemcpy(&E[copyOffset] , *d_E_prev, matSize, cudaMemcpyDeviceToHost);
-			cudaMemcpy(&E_prev[copyOffset] , *d_E, matSize, cudaMemcpyDeviceToHost);
-		}
+		cudaMemcpy(&E[copyOffset], *d_E_prev, matSize, cudaMemcpyDeviceToHost);
+		cudaMemcpy(&E_prev[copyOffset], *d_E, matSize, cudaMemcpyDeviceToHost);
 	}
+}
 
-	if (shouldFree)
-	{
-		cudaMemcpy(&E[copyOffset] , *d_E, matSize, cudaMemcpyDeviceToHost);
-		cudaMemcpy(&E_prev[copyOffset] , *d_E_prev, matSize, cudaMemcpyDeviceToHost);	
-		cudaMemcpy(&R[copyOffset] , *d_R, matSize, cudaMemcpyDeviceToHost);
-		cudaFree(*d_E);
-		cudaFree(*d_R);
-		cudaFree(*d_E_prev);
-	}
+void copyDataHostToDevice(double **E, double **E_prev, double **R, double **d_E, double **d_E_prev, double **d_R, const int n, const int m){
+	int nx = n + 2, ny = m + 2;
+	int matSize = sizeof(double) * nx * ny;
+	int copyOffset = ny;
+
+	cudaMalloc(&(*d_E), matSize);
+	cudaMalloc(&(*d_R), matSize);
+	cudaMalloc(&(*d_E_prev), matSize);
+	cudaMemcpy(*d_R, &R[copyOffset], matSize, cudaMemcpyHostToDevice);
+	cudaMemcpy(*d_E, &E[copyOffset], matSize, cudaMemcpyHostToDevice);
+	cudaMemcpy(*d_E_prev, &E_prev[copyOffset], matSize, cudaMemcpyHostToDevice);
 }

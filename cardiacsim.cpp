@@ -198,6 +198,8 @@ int main(int argc, char **argv)
 
   cout << endl;
 
+  copyDataHostToDevice(E, E_prev, R, &d_E, &d_R, &d_E_prev, n, m);
+
   // Start the timer
   double t0 = getTime();
 
@@ -207,16 +209,12 @@ int main(int argc, char **argv)
   // Integer timestep number
   int niter = 0;
 
-  int shouldMalloc = 1;
   int shouldFree = 0;
 
   int swap = 0;
 
   while (t < T)
   {
-    if (t > 0.0)
-      shouldMalloc = 0;
-
     t += dt;
 
     if (t >= T)
@@ -227,7 +225,7 @@ int main(int argc, char **argv)
     if (kernel == 0)
       simulate(E, E_prev, R, alpha, n, m, kk, dt, a, epsilon, M1, M2, b);
     else
-      deviceKernel(E, E_prev, R, &d_E, &d_R, &d_E_prev, alpha, n, m, kk, dt, a, epsilon, M1, M2, b, shouldMalloc, shouldFree, kernel, swap, bx, by, plot_freq);
+      deviceKernel(E, E_prev, R, &d_E, &d_R, &d_E_prev, alpha, n, m, kk, dt, a, epsilon, M1, M2, b, shouldFree, kernel, swap, bx, by, plot_freq);
 
     //swap current E with previous E
     if (kernel == 0)
@@ -253,6 +251,7 @@ int main(int argc, char **argv)
   double Gflops = (double)(niter * (1E-9 * n * n) * 28.0) / time_elapsed;
   double BW = (double)(niter * 1E-9 * (n * n * sizeof(double) * 4.0)) / time_elapsed;
 
+  // copyDataDeviceToHost(E, E_prev, R, &d_E, &d_R, &d_E_prev, n, m);
   cout << "Number of Iterations        : " << niter << endl;
   cout << "Elapsed Time (sec)          : " << time_elapsed << endl;
   cout << "Sustained Gflops Rate       : " << Gflops << endl;
