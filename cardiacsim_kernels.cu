@@ -219,9 +219,9 @@ void deviceKernel(double **E, double **E_prev, double **R, double **d_E, double 
 	else
 	{
 		if(swap % 2)
-			v4_kernel<<<grid, block, sharedBlockSize>>>(d_E, d_E_prev, d_R, alpha, n, m, kk, dt, a, epsilon, M1, M2, b, bx, by);
+			v4_kernel<<<grid, block, sharedBlockSize>>>(*d_E_prev, *d_E, *d_R, alpha, n, m, kk, dt, a, epsilon, M1, M2, b, bx, by);
 		else
-			v4_kernel<<<grid, block, sharedBlockSize>>>(d_E, d_E_prev, d_R, alpha, n, m, kk, dt, a, epsilon, M1, M2, b, bx, by);
+			v4_kernel<<<grid, block, sharedBlockSize>>>(*d_E, *d_E_prev, *d_R, alpha, n, m, kk, dt, a, epsilon, M1, M2, b, bx, by);
 		
 	}
 

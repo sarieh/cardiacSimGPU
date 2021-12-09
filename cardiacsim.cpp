@@ -227,8 +227,7 @@ int main(int argc, char **argv)
     if (kernel == 0)
       simulate(E, E_prev, R, alpha, n, m, kk, dt, a, epsilon, M1, M2, b);
     else
-      deviceKernel(E, E_prev, R, alpha, n, m, kk, dt, a, epsilon, M1, M2, b, shouldMalloc, shouldFree, kernel, swap, bx, by);
-
+      deviceKernel(E, E_prev, R, &d_E, &d_R, &d_E_prev, alpha, n, m, kk, dt, a, epsilon, M1, M2, b, shouldMalloc, shouldFree, kernel, swap, bx, by);
 
     //swap current E with previous E
     if (kernel == 0)
@@ -257,8 +256,7 @@ int main(int argc, char **argv)
   cout << "Number of Iterations        : " << niter << endl;
   cout << "Elapsed Time (sec)          : " << time_elapsed << endl;
   cout << "Sustained Gflops Rate       : " << Gflops << endl;
-  cout << "Sustained Bandwidth (GB/sec): " << BW << endl
-       << endl;
+  cout << "Sustained Bandwidth (GB/sec): " << BW << endl;
 
   double mx;
   double l2norm = stats(E_prev, m, n, &mx);
