@@ -227,7 +227,7 @@ int main(int argc, char **argv)
     if (kernel == 0)
       simulate(E, E_prev, R, alpha, n, m, kk, dt, a, epsilon, M1, M2, b);
     else
-      deviceKernel(E, E_prev, R, &d_E, &d_R, &d_E_prev, alpha, n, m, kk, dt, a, epsilon, M1, M2, b, shouldMalloc, shouldFree, kernel, swap, bx, by);
+      deviceKernel(E, E_prev, R, &d_E, &d_R, &d_E_prev, alpha, n, m, kk, dt, a, epsilon, M1, M2, b, shouldMalloc, shouldFree, kernel, swap, bx, by, plot_freq);
 
     //swap current E with previous E
     if (kernel == 0)
@@ -353,7 +353,7 @@ void splot(double **U, double T, int niter, int m, int n)
 {
   int i, j;
   if (gnu == NULL)
-    gnu = popen("gnuplot", "w");
+    gnu = fopen("gnuplot-s", "w");
 
   double mx = -1, mn = 32768;
   for (j = 0; j < m; j++)
