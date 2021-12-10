@@ -1,0 +1,77 @@
+Grid Size       : 1024
+Duration of Sim : 500
+Time step dt    : 0.00431553
+Block Size: 4 x 4
+Using CUDA Kernel Version: 4
+
+Number of Iterations        : 115861
+Elapsed Time (sec)          : 14.1913
+Sustained Gflops Rate       : 239.703
+Sustained Bandwidth (GB/sec): 273.947
+Max: 0.969272 L2norm: 0.647037
+Grid Size       : 1024
+Duration of Sim : 500
+Time step dt    : 0.00431553
+Block Size: 8 x 8
+Using CUDA Kernel Version: 4
+
+Number of Iterations        : 115861
+Elapsed Time (sec)          : 7.60677
+Sustained Gflops Rate       : 447.193
+Sustained Bandwidth (GB/sec): 511.078
+Max: 0.969272 L2norm: 0.647037
+Grid Size       : 1024
+Duration of Sim : 500
+Time step dt    : 0.00431553
+Block Size: 12 x 12
+Using CUDA Kernel Version: 4
+
+Number of Iterations        : 115861
+Elapsed Time (sec)          : 7.74117
+Sustained Gflops Rate       : 439.429
+Sustained Bandwidth (GB/sec): 502.204
+Max: 0.969272 L2norm: 0.647037
+Grid Size       : 1024
+Duration of Sim : 500
+Time step dt    : 0.00431553
+Block Size: 16 x 16
+Using CUDA Kernel Version: 4
+
+Number of Iterations        : 115861
+Elapsed Time (sec)          : 7.4458
+Sustained Gflops Rate       : 456.86
+Sustained Bandwidth (GB/sec): 522.126
+Max: 0.969272 L2norm: 0.647037
+Grid Size       : 1024
+Duration of Sim : 500
+Time step dt    : 0.00431553
+Block Size: 22 x 22
+Using CUDA Kernel Version: 4
+
+Number of Iterations        : 115861
+Elapsed Time (sec)          : 7.54098
+Sustained Gflops Rate       : 451.094
+Sustained Bandwidth (GB/sec): 515.536
+Max: 0.969272 L2norm: 0.647037
+Grid Size       : 1024
+Duration of Sim : 500
+Time step dt    : 0.00431553
+Block Size: 28 x 28
+Using CUDA Kernel Version: 4
+
+Number of Iterations        : 115861
+Elapsed Time (sec)          : 7.7147
+Sustained Gflops Rate       : 440.936
+Sustained Bandwidth (GB/sec): 503.927
+Max: 0.969272 L2norm: 0.647037
+Grid Size       : 1024
+Duration of Sim : 500
+Time step dt    : 0.00431553
+Block Size: 32 x 32
+Using CUDA Kernel Version: 4
+
+Number of Iterations        : 115861
+Elapsed Time (sec)          : 7.32444
+Sustained Gflops Rate       : 464.43
+Sustained Bandwidth (GB/sec): 530.778
+Max: 0.969272 L2norm: 0.647037
