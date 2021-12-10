@@ -198,6 +198,7 @@ int main(int argc, char **argv)
 
   cout << endl;
 
+  // Allocate device matrices and copy host matrices into them
   copyDataHostToDevice(E, E_prev, R, &d_E, &d_R, &d_E_prev, n, m);
 
   // Start the timer
@@ -211,6 +212,7 @@ int main(int argc, char **argv)
 
   int shouldFree = 0;
 
+  // counter to indicate wether device matrice should we swapped or not
   int swap = 0;
 
   while (t < T)
@@ -222,14 +224,14 @@ int main(int argc, char **argv)
 
     niter++;
 
-    if (kernel == 0)
+    if (kernel == 0) // call the serial simulation
       simulate(E, E_prev, R, alpha, n, m, kk, dt, a, epsilon, M1, M2, b);
-    else
+    else // call kernel and specify swapping and plotting indicators
       deviceKernel(E, E_prev, R, &d_E, &d_R, &d_E_prev, alpha, n, m, kk, dt, a, epsilon, M1, M2, b, shouldFree, kernel, swap, bx, by, plot_freq);
 
-    //swap current E with previous E
     if (kernel == 0)
-    {
+    { // serial version (otherwise, swapping is done on the device)
+      //swap current E with previous E
       double **tmp = E;
       E = E_prev;
       E_prev = tmp;
